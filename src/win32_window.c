@@ -35,6 +35,7 @@
 #include <assert.h>
 #include <windowsx.h>
 #include <shellapi.h>
+#include <synchapi.h>
 
 // Returns the window style for the specified window
 //
@@ -524,6 +525,13 @@ static void maximizeWindowManually(_GLFWwindow* window)
                  rect.right - rect.left,
                  rect.bottom - rect.top,
                  SWP_NOACTIVATE | SWP_NOZORDER | SWP_FRAMECHANGED);
+}
+
+static double getElapsed() {
+    const uint64_t frequency = _glfwPlatformGetTimerFrequency();
+    const uint64_t value = _glfwPlatformGetTimerValue();
+
+    return value / (double) frequency;
 }
 
 // Window procedure for user-created windows
@@ -1262,6 +1270,12 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             DragFinish(drop);
             return 0;
         }
+
+        case WM_GETICON:
+        {
+            window->win32.waitingForWmGetIcon = GLFW_FALSE;
+            break;
+        }
     }
 
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
@@ -1606,6 +1620,12 @@ void _glfwSetWindowIconWin32(_GLFWwindow* window, int count, const GLFWimage* im
 
     SendMessageW(window->win32.handle, WM_SETICON, ICON_BIG, (LPARAM) bigIcon);
     SendMessageW(window->win32.handle, WM_SETICON, ICON_SMALL, (LPARAM) smallIcon);
+    window->win32.waitingForWmGetIcon = GLFW_TRUE;
+    double now = getElapsed();
+    while (window->win32.waitingForWmGetIcon && (getElapsed() - now) < 0.5) {
+        _glfwPollEventsWin32();
+        Sleep(0);
+    }
 
     if (window->win32.bigIcon)
         DestroyIcon(window->win32.bigIcon);

@@ -375,6 +375,7 @@ typedef struct _GLFWwindowWin32
     int                 lastCursorPosX, lastCursorPosY;
     // The last received high surrogate when decoding pairs of UTF-16 messages
     WCHAR               highSurrogate;
+    GLFWbool            waitingForWmGetIcon;
 } _GLFWwindowWin32;
 
 // Win32-specific global data
